@@ -5,6 +5,7 @@ import math
 from decimal import Decimal
 
 
+
 class ProteinSystemModel():
 
     """
@@ -64,7 +65,7 @@ class ProteinSystemModel():
     def create_data(self):
 
         """
-        Return data of bins edges and bin center based on s = exp(I).
+        Generate data for bins edges and bins centers.
 
         """
 
@@ -134,24 +135,24 @@ class ProteinSystemModel():
         return base * math.exp(e_pow)
 
 
-    def lognorm_fit(self, data_s, sigma2, expec):
+    def lognorm_fit(self, data_s: float, sigma2: float, expec: float):
 
         return np.array([self.lognorm_func(s, sigma2, expec) for s in data_s])
     
 
-    def norm_fit(self, data_i, sigma2, expec):
+    def norm_fit(self, data_i: float, sigma2: float, expec: float):
 
         return np.array([self.lognorm_func(i, sigma2, expec) for i in data_i])
 
 
-    def pdf(self, data_s, sigma2, expec, n):
+    def pdf(self, data_s: float, sigma2: float, expec: float, n: int):
 
         w = self.__poison(n)
 
         return np.array([w * self.lognorm_func(s, sigma2, expec) for s in data_s])
 
 
-    def lognorm_prob(self, x1, x2, sigma2, expec):
+    def lognorm_prob(self, x1: float, x2: float, sigma2: float, expec: float):
 
         return quad(self.lognorm_func, x1, x2, args=(sigma2, expec))[0]
 
@@ -191,29 +192,19 @@ class ProteinSystemModel():
     def get_probs(self):
 
         return self.get_prob_bins_lognorm()[1] * self.get_poisson_weights()
-
-
-    def reassessment(self, pdf, p=0.25):
-
-        n_bins = self.__M + 1
-        reass_pdfs = np.zeros((self.__M + 1, n_bins), dtype='float')
-
-        for n_ in range(self.__M + 1):
-
-            for n in range(self.__M + 1):
-
-                for m in range(self.__M + 1 - n):
-                    b = binom(self.__M - n, m)
-                    pb = math.pow(p, m) * math.pow(1 - p, self.__M - n - m)
-                    nm = b * pb
-
-                    if n_ == n + m:
-                        reass_pdfs[n_] += nm * pdf[n]
-
-        return reass_pdfs
     
 
-    def reassessment_probs(self, pdf, p=0.25):
+    def reassessment_probs(self, p=0.25):
+
+
+        """
+        Reevaluates the probability distribution based on the similarity between sequences.
+
+        p: float - Hamming's distance similarity threshold.
+
+        """
+
+        probs = self.get_probs()
 
         n_bins = self.__M + 1
         reass_pdfs = np.zeros((self.__M + 1, n_bins), dtype='float')
@@ -228,6 +219,6 @@ class ProteinSystemModel():
                     nm = b * pb
 
                     if n_ == n + m:
-                        reass_pdfs[n_] += nm * pdf[n]
+                        reass_pdfs[n_] += nm * probs[n]
 
         return reass_pdfs
