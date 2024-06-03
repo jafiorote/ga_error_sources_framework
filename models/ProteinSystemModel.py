@@ -147,6 +147,7 @@ class ProteinSystemModel():
     def pdf(self, data_s, sigma2, expec, n):
 
         w = self.__poison(n)
+
         return np.array([w * self.lognorm_func(s, sigma2, expec) for s in data_s])
 
 
@@ -154,7 +155,7 @@ class ProteinSystemModel():
 
         return quad(self.lognorm_func, x1, x2, args=(sigma2, expec))[0]
 
-
+    
     def get_prob_bins_lognorm(self):
 
         n_max = self.__M + 1
@@ -192,21 +193,41 @@ class ProteinSystemModel():
         return self.get_prob_bins_lognorm()[1] * self.get_poisson_weights()
 
 
-    def reassessment(self, data, p=0.1, weight=True):
+    def reassessment(self, pdf, p=0.25):
 
-            M = data.shape[0]
-            n_bins = data.shape[1]
-            reass_pdfs = np.zeros((M, n_bins), dtype='float')
+        n_bins = self.__M + 1
+        reass_pdfs = np.zeros((self.__M + 1, n_bins), dtype='float')
 
-            for n_ in range(M):
-                for n in range(M):
-                    w = self.poison(n) if weight else 1
-                    for m in range(M - n):
-                        b = binom(M - n, m)
-                        pb = math.pow(p, m) * math.pow(1 - p, M - n - m)
-                        wnm = b * pb * w
+        for n_ in range(self.__M + 1):
 
-                        if n_ == n + m:
-                            reass_pdfs[n_] += wnm * data[n]
+            for n in range(self.__M + 1):
 
-            return reass_pdfs
+                for m in range(self.__M + 1 - n):
+                    b = binom(self.__M - n, m)
+                    pb = math.pow(p, m) * math.pow(1 - p, self.__M - n - m)
+                    nm = b * pb
+
+                    if n_ == n + m:
+                        reass_pdfs[n_] += nm * pdf[n]
+
+        return reass_pdfs
+    
+
+    def reassessment_probs(self, pdf, p=0.25):
+
+        n_bins = self.__M + 1
+        reass_pdfs = np.zeros((self.__M + 1, n_bins), dtype='float')
+
+        for n_ in range(self.__M + 1):
+
+            for n in range(self.__M + 1):
+
+                for m in range(self.__M + 1 - n):
+                    b = binom(self.__M - n, m)
+                    pb = math.pow(p, m) * math.pow(1 - p, self.__M - n - m)
+                    nm = b * pb
+
+                    if n_ == n + m:
+                        reass_pdfs[n_] += nm * pdf[n]
+
+        return reass_pdfs
