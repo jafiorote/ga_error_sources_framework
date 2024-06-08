@@ -103,22 +103,6 @@ class ProteinSystemModel():
         return weights(np.arange(self.__M + 1)).reshape(-1, 1)
 
 
-    def norm_func(self, i: float, sigma2: float, expec: float):
-
-        """
-        Implements normal pmf for a I distribution in a protein system.
-
-        i: float - I
-        sigma_2: foat - var of I
-        expec: float - expected value of I
-        
-        """
-
-        base = 1 / (math.sqrt(sigma2 * 2 * math.pi))
-        e_pow = -0.5 * math.pow((i - expec) / math.sqrt(sigma2), 2)
-        return base * math.exp(e_pow)
-
-
     def lognorm_func(self, s: float, sigma2: float, expec: float):
 
         """
@@ -138,11 +122,6 @@ class ProteinSystemModel():
     def lognorm_fit(self, data_s: float, sigma2: float, expec: float):
 
         return np.array([self.lognorm_func(s, sigma2, expec) for s in data_s])
-    
-
-    def norm_fit(self, data_i: float, sigma2: float, expec: float):
-
-        return np.array([self.lognorm_func(i, sigma2, expec) for i in data_i])
 
 
     def pdf(self, data_s: float, sigma2: float, expec: float, n: int):
@@ -172,7 +151,7 @@ class ProteinSystemModel():
 
         for n in np.arange(n_max):
 
-            integral = self.lognorm_prob(1, math.exp(self.__i_nat), sigma2[n], expec[n]) ##
+            integral = self.lognorm_prob(math.exp(self.__i_0), math.exp(self.__i_nat), sigma2[n], expec[n]) ##
             trunc = 1 / integral if integral > 0 else 1                                  ## trunc log normal
             truncs[n] = trunc                                                            ##
 
@@ -194,31 +173,27 @@ class ProteinSystemModel():
         return self.get_prob_bins_lognorm()[1] * self.get_poisson_weights()
     
 
-    def reassessment_probs(self, p=0.25):
-
+    def reassessment_probs(self, p_array, p=0.25):
 
         """
         Reevaluates the probability distribution based on the similarity between sequences.
 
         p: float - Hamming's distance similarity threshold.
-
+        
         """
-
-        probs = self.get_probs()
 
         n_bins = self.__M + 1
         reass_pdfs = np.zeros((self.__M + 1, n_bins), dtype='float')
 
-        for n_ in range(self.__M + 1):
+        # Precompute powers of p and (1 - p)
+        p_powers = np.power(p, np.arange(self.__M + 1))
+        q_powers = np.power(1 - p, np.arange(self.__M + 1))
 
-            for n in range(self.__M + 1):
-
-                for m in range(self.__M + 1 - n):
-                    b = binom(self.__M - n, m)
-                    pb = math.pow(p, m) * math.pow(1 - p, self.__M - n - m)
-                    nm = b * pb
-
-                    if n_ == n + m:
-                        reass_pdfs[n_] += nm * probs[n]
+        for n in range(self.__M + 1):
+            for m in range(self.__M + 1 - n):
+                n_ = n + m
+                b = binom(self.__M - n, m)
+                pb = p_powers[m] * q_powers[self.__M - n - m]
+                reass_pdfs[n_] += b * pb * p_array[n]
 
         return reass_pdfs
