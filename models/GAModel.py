@@ -52,7 +52,7 @@ class GAModel():
         if minimize:
             state_probs = np.fliplr(state_probs)
         
-        transitions, idxs = self.get_transitions_matrix_old(state_probs)
+        transitions, idxs = self.get_transitions_matrix(state_probs)
         initial_prob = state_probs[init_state[0], init_state[1]]
         
         step_probs = [initial_prob]

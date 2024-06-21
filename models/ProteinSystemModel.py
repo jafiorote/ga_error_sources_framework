@@ -72,6 +72,21 @@ class ProteinSystemModel():
         n_bins = self.__M + 1
 
         data =  np.linspace(self.__i_0, self.__i_nat, n_bins + 1) # get edges of bins
+        bins_center = np.array([(data[x] + data[x + 1]) / 2 for x in range(n_bins)])
+        
+        return data, bins_center
+
+
+    def create_data_s(self):
+
+        """
+        Generate data with exp(I) for bins edges and bins centers.
+
+        """
+
+        n_bins = self.__M + 1
+
+        data =  np.linspace(self.__i_0, self.__i_nat, n_bins + 1) # get edges of bins
         v_func = np.vectorize(lambda x: math.exp(x))
         data_s = v_func(data)
         bins_center = np.array([(data_s[x] + data_s[x + 1]) / 2 for x in range(n_bins)])
@@ -124,6 +139,28 @@ class ProteinSystemModel():
         return np.array([self.lognorm_func(s, sigma2, expec) for s in data_s])
 
 
+    def norm_fit(self, data_i: float, sigma2: float, expec: float):
+
+        return np.array([self.norm_func(i, sigma2, expec) for i in data_i])
+
+
+    def norm_func(self, i: float, sigma2: float, expec: float):
+
+        """
+        Implements normal pmf for a I distribution in a protein system.
+
+        i: float - I
+        sigma_2: foat - var of I
+        expec: float - expected value of I
+        
+        """
+
+        base = 1 / (math.sqrt(sigma2 * 2 * math.pi))
+        e_pow = -0.5 * math.pow((i - expec) / math.sqrt(sigma2), 2)
+        return base * math.exp(e_pow)
+
+
+
     def pdf(self, data_s: float, sigma2: float, expec: float, n: int):
 
         w = self.__poison(n)
@@ -135,13 +172,29 @@ class ProteinSystemModel():
 
         return quad(self.lognorm_func, x1, x2, args=(sigma2, expec))[0]
 
-    
-    def get_prob_bins_lognorm(self):
+
+    def norm_prob(self, x1: float, x2: float, sigma2: float, expec: float):
+
+        return quad(self.norm_func, x1, x2, args=(sigma2, expec))[0]
+
+
+    def get_prob_bins(self, dist="norm"):
+
+
+        if dist == "norm":
+            fit_func = self.norm_fit
+            prob_func = self.norm_prob
+            data_func =self.create_data
+
+        elif dist == "lognorm":
+            fit_func = self.lognorm_fit
+            prob_func = self.lognorm_prob
+            data_func =self.create_data_s
 
         n_max = self.__M + 1
         n_bins = self.__M + 1
 
-        data_s, bins_center = self.create_data()
+        data, bins_center = data_func()
         sigma2 = self.sigma2_ns()
         expec = self.expec_ns()
 
@@ -151,26 +204,26 @@ class ProteinSystemModel():
 
         for n in np.arange(n_max):
 
-            integral = self.lognorm_prob(math.exp(self.__i_0), math.exp(self.__i_nat), sigma2[n], expec[n]) ##
-            trunc = 1 / integral if integral > 0 else 1                                  ## trunc log normal
-            truncs[n] = trunc                                                            ##
+            integral = prob_func(data[0], data[-1], sigma2[n], expec[n]) ##
+            trunc = 1 / integral if integral > 0 else 1                  ## trunc normal
+            truncs[n] = trunc                                            ##
 
-            pdfs[n] = self.lognorm_fit(bins_center, sigma2[n], expec[n])
+            pdfs[n] = fit_func(bins_center, sigma2[n], expec[n])
 
             vec = []
             for idx in range(n_bins):
-                a = data_s[idx]
-                b = data_s[idx + 1]
-                integ = self.lognorm_prob(a, b, sigma2[n], expec[n])
+                a = data[idx]
+                b = data[idx + 1]
+                integ = prob_func(a, b, sigma2[n], expec[n])
                 vec.append(integ * trunc)
             probs[n] = vec
 
         return pdfs, probs
 
 
-    def get_probs(self):
+    def get_probs(self, dist="norm"):
 
-        return self.get_prob_bins_lognorm()[1] * self.get_poisson_weights()
+        return self.get_prob_bins(dist)[1] * self.get_poisson_weights()
     
 
     def reassessment_probs(self, p_array, p=0.25):
