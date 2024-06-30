@@ -1,6 +1,6 @@
 import numpy as np
-import math
-from models.proteinSystemModel import ProteinSystemModel
+from scipy.stats import lognorm
+from models.altProteinSystemModel import ProteinSystemModel
 
 
 class LogNormPSM(ProteinSystemModel):
@@ -26,29 +26,9 @@ class LogNormPSM(ProteinSystemModel):
         """
 
         super().__init__(M, i_0, i_nat, sigma2_0)
-        self.__M = M
-        self.__i_0 = i_0
-        self.__i_nat = i_nat
-        
-
-    def create_data(self):
-
-        """
-        Generate data with exp(I) for bins edges and bins centers.
-
-        """
-
-        n_bins = self.__M + 1
-
-        data =  np.linspace(0, self.__i_nat, n_bins + 1) # get edges of bins
-        v_func = np.vectorize(lambda x: math.exp(x))
-        data_s = v_func(data)
-        bins_center = np.array([(data_s[x] + data_s[x + 1]) / 2 for x in range(n_bins)])
-        
-        return data_s, bins_center
 
 
-    def statistical_func(self, s: float, sigma2: float, expec: float):
+    def statistical_func(self, i: float, sigma2: float, expec: float):
 
         """
         Implements log-normal pmf for a I distribution in a protein system.
@@ -57,10 +37,18 @@ class LogNormPSM(ProteinSystemModel):
         ----------
         s (float): exponencial I value to be fitted
         sigma_2 (float): variance of I
-        expec (float): expected value of I
+        expec (float): expected value of I  
         
         """
 
-        base = 1 / (s * math.sqrt(sigma2 * 2 * math.pi))
-        e_pow = - (math.pow(math.log(s) - expec, 2)) / (sigma2 * 2)
-        return base * math.exp(e_pow)
+        return lognorm.pdf(np.exp(i), s=np.sqrt(sigma2), loc=0, scale=np.exp(expec))
+    
+
+    def prob_interval(self, i1, i2, sigma2, expec):
+        
+        cdf_i2 = lognorm.cdf(np.exp(i2), s=np.sqrt(sigma2), loc=0, scale=np.exp(expec))
+        cdf_i1 = lognorm.cdf(np.exp(i1), s=np.sqrt(sigma2), loc=0, scale=np.exp(expec))
+        
+        prob = cdf_i2 - cdf_i1
+        
+        return prob

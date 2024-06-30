@@ -1,6 +1,6 @@
-import math
+import numpy as np
 from scipy.stats import norm
-from models.proteinSystemModel import ProteinSystemModel
+from models.altProteinSystemModel import ProteinSystemModel
 
 
 class NormPSM(ProteinSystemModel):
@@ -9,7 +9,7 @@ class NormPSM(ProteinSystemModel):
     Implements a normal distribution model of protein system model.
 
     """
-
+        
     def __init__(self, M:int, i_0:float, i_nat:float, sigma2_0:float):
 
         """ 
@@ -24,29 +24,12 @@ class NormPSM(ProteinSystemModel):
         - sigma2_0 (float): 
             Variance of I for systems arrangments with n = 0;
         """
- 
+
         super().__init__(M, i_0, i_nat, sigma2_0)
 
 
-    # def statistical_func(self, i: float, sigma2: float, expec: float):
-
-    #     """
-    #     Implements normal pmf for a I distribution in a protein system.
-        
-    #     Parameters
-    #     ----------
-    #     - i (float): I value to be fitted
-    #     - sigma_2 (float): variance of I
-    #     - expec (float): expected value of I
-        
-    #     """
-
-    #     base = 1 / (math.sqrt(sigma2 * 2 * math.pi))
-    #     e_pow = -0.5 * math.pow((i - expec) / math.sqrt(sigma2), 2)
-    #     return base * math.exp(e_pow)
-
-
     def statistical_func(self, i: float, sigma2: float, expec: float):
+
         """
         Implements normal pmf for a I distribution in a protein system.
         
@@ -61,4 +44,14 @@ class NormPSM(ProteinSystemModel):
         float: Probability density function value at i
         """
 
-        return norm.pdf(i, expec, math.sqrt(sigma2))
+        return norm.pdf(i, loc=expec, scale=np.sqrt(sigma2))
+    
+
+    def prob_interval(self, i1, i2, sigma2, expec):
+        
+        cdf_i2 = norm.cdf(i2, loc=expec, scale=np.sqrt(sigma2))
+        cdf_i1 = norm.cdf(i1, loc=expec, scale=np.sqrt(sigma2))
+        
+        prob = cdf_i2 - cdf_i1
+        
+        return prob

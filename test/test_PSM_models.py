@@ -5,7 +5,6 @@ from models.logNormPSM import LogNormPSM
 from models.normPSM import NormPSM
 import logging
 
-#TODO - Codar logs
 
 class TestPSMModels(unittest.TestCase):
 
@@ -116,7 +115,6 @@ class TestPSMModels(unittest.TestCase):
     def test_prob_poisson_equals_1_2(self):
         self.assertAlmostEqual(1, np.sum(self.probs_poisson_asserted))
         
-
 
 if __name__ == '__main__':
     unittest.main()

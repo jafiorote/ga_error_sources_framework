@@ -28,8 +28,16 @@ class TestGAModel(unittest.TestCase):
         best_path = self.ga_model.get_best_path(self.probs_poisson_asserted, minimize=False, init_state=[0, 0])[0]
         self.assertTrue(np.array_equal(self.best_path_asserted, best_path))
 
-    def test_best_path_prob_steps(self):
+    def test_best_path_prob_steps_maximize(self):
         step_probs = self.ga_model.get_best_path(self.probs_poisson_asserted, minimize=False, init_state=[0, 0])[1]
+        self.assertTrue(np.array_equal(self.step_probs_asserted, step_probs))
+
+    def test_best_path_minimize(self):
+        best_path = self.ga_model.get_best_path(self.probs_poisson_asserted, minimize=True, init_state=[10, 10])[0]
+        self.assertTrue(np.array_equal(self.best_path_asserted, best_path))
+
+    def test_best_path_prob_steps_minimize(self):
+        step_probs = self.ga_model.get_best_path(self.probs_poisson_asserted, minimize=True, init_state=[10, 10])[1]
         self.assertTrue(np.array_equal(self.step_probs_asserted, step_probs))
 
 
