@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import norm
+from scipy.integrate import quad
 from models.altProteinSystemModel import ProteinSystemModel
 
 
@@ -55,3 +56,4 @@ class NormPSM(ProteinSystemModel):
         prob = cdf_i2 - cdf_i1
         
         return prob
+

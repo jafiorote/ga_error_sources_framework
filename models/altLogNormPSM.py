@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import lognorm
+from scipy.integrate import quad
 from models.altProteinSystemModel import ProteinSystemModel
 
 
@@ -40,15 +41,31 @@ class LogNormPSM(ProteinSystemModel):
         expec (float): expected value of I  
         
         """
+        
+        # base = 1 / (np.exp(i) * np.sqrt(sigma2 * 2 * np.pi))
+        # e_pow = - (np.float_power(i - expec, 2)) / (sigma2 * 2)
+        # return base * np.exp(e_pow)
 
-        return lognorm.pdf(np.exp(i), s=np.sqrt(sigma2), loc=0, scale=np.exp(expec))
+        sigma = np.sqrt(sigma2)
+        scale = np.exp(expec)
+
+        return lognorm.pdf(np.exp(i), s=sigma, scale=scale)
+    
+
+    # def prob_interval(self, i1, i2, sigma2, expec):
+
+    #     return quad(self.statistical_func, i1, i2, args=(sigma2, expec))[0]
     
 
     def prob_interval(self, i1, i2, sigma2, expec):
         
-        cdf_i2 = lognorm.cdf(np.exp(i2), s=np.sqrt(sigma2), loc=0, scale=np.exp(expec))
-        cdf_i1 = lognorm.cdf(np.exp(i1), s=np.sqrt(sigma2), loc=0, scale=np.exp(expec))
+        sigma = np.sqrt(sigma2)
+        scale = np.exp(expec)
         
-        prob = cdf_i2 - cdf_i1
+        cdf_x1 = lognorm.cdf(np.exp(i1), s=sigma, scale=scale)
+        cdf_x2 = lognorm.cdf(np.exp(i2), s=sigma, scale=scale)
         
-        return prob
+        return cdf_x2 - cdf_x1
+        
+
+        

@@ -4,7 +4,12 @@ from scipy.special import binom
 from scipy.stats import poisson, lognorm, norm
 import math
 from decimal import Decimal
+from multiprocessing import Pool
 
+
+def compute_probs_helper(args):
+    obj, n = args
+    return obj.compute_probs(n)
 
 class ProteinSystemModel():
 
@@ -131,6 +136,61 @@ class ProteinSystemModel():
     def fit(self, data: float, sigma2: float, expec: float):
 
         return np.array([self.statistical_func(i, sigma2, expec) for i in data])
+
+
+    def compute_probs(self, n):
+        data, bins_center = self.create_data()
+        sigma2 = self.sigma2_ns()
+        expec = self.expec_ns()
+
+        integral = self.prob_interval(data[0], data[-1], sigma2[n], expec[n])
+        pdf = self.fit(bins_center, sigma2[n], expec[n])
+
+        vec = [integral, pdf]
+        for idx in range(self.__M + 1):
+            a = data[idx]
+            b = data[idx + 1]
+            integ = self.prob_interval(a, b, sigma2[n], expec[n])
+            vec.append(integ)
+
+        return vec
+
+
+    def parallel_get_prob_bins(self):
+
+        n_max = self.__M + 1
+        n_bins = self.__M + 1
+
+        data, bins_center = self.create_data()
+        sigma2 = self.sigma2_ns()
+        expec = self.expec_ns()
+
+        pdfs = np.zeros((n_max, n_bins), dtype=float)
+        truncs = np.zeros(n_max, dtype=float)
+        probs = np.zeros((n_max, n_bins), dtype=float)
+
+        # Using multiprocessing to parallelize the computation
+        with Pool() as pool:
+            args = [(self, n) for n in range(n_max)]
+            results = pool.map(compute_probs_helper, args)
+
+        # Populate the pdfs and probs arrays with results
+        for n, vec in enumerate(results):
+            integral = vec[0]
+            pdf = vec[1]
+            trunc = 1 / integral if integral > 0 else 1
+            truncs[n] = trunc
+            pdfs[n] = pdf
+
+            probs_vec = []
+            for idx in range(n_bins):
+                a = data[idx]
+                b = data[idx + 1]
+                integ = vec[2 + idx]
+                probs_vec.append(integ * trunc)
+            probs[n] = probs_vec
+
+        return pdfs, probs
 
 
     def get_prob_bins(self):

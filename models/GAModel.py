@@ -20,12 +20,12 @@ class GAModel():
         - transitions (numpy.ndarray):
             A 2D array of shape (n_max * n_bins, n_max * n_bins) representing the transition matrix.
         - idxs (list of lists):
-            A list of index pairs, where each pair represents the (I, n) coordinates.
+            A list of index pairs, where each pair represents the (n, I) coordinates.
         
         Notes
         -----
         The function constructs a transition matrix where each state is given by 
-        `I` and `n`. A transition from state (I1, n1) to state (I2, n2) is allowed 
+        `I` and `n`. A transition from state (n1, I1) to state (n2, I2) is allowed 
         if `n2` is within `n_step` units of `n1` and `I2` is exactly `I1 + 1`. The 
         probabilities are normalized so that the sum of transitions from each state equals 1.
 
@@ -80,7 +80,7 @@ class GAModel():
         - list
             A list containing two elements:
             - pathway(list of lists):
-                A list of coordinates representing the best path through the state_probs matrix.
+                A list of coordinates (n, I) representing the best path through the state_probs matrix.
             - step_probs(List[float]):
                 A list of probabilities corresponding to each step in the pathway.
 
