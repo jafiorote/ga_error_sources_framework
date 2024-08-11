@@ -1,5 +1,5 @@
 import unittest
-from models.GAModel import GAModel
+from models.gaModel import GAModel
 import numpy as np
 
 
