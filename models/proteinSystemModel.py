@@ -7,10 +7,6 @@ from decimal import Decimal
 from multiprocessing import Pool
 
 
-def compute_probs_helper(args):
-    obj, n = args
-    return obj.compute_probs(n)
-
 class ProteinSystemModel():
 
     """
@@ -41,7 +37,29 @@ class ProteinSystemModel():
         self.__sigma2_0 = sigma2_0
         self.__alpha = self.get_alpha()
         self.__beta = self.get_beta()
+        self.__a = 1.63548
+        self.__b = 0.6762
 
+
+    def get_new_alpha(self):
+        return self.__i_nat - self.__i_0
+
+    def get_new_beta(self, n):
+        return np.power(n / self.__M, self.__a) * np.power(1 - (n / self.__M), self.__b)
+
+    def get_gama(self, n):
+        return 1 - (n / self.__M)
+
+    def new_expec_ns(self, n):
+        alpha = self.get_new_alpha()
+        return self.__i_0 + alpha * np.power(n / self.__M, 2)
+
+    def new_sigma2_ns(self, n):
+        gama = self.get_gama(n)
+        beta = self.get_new_beta(n)
+        sigma2 = gama * self.__sigma2_0 + beta
+
+        return sigma2 if sigma2 > 0 else 0.000001
 
     def get_alpha(self):
 
@@ -84,7 +102,7 @@ class ProteinSystemModel():
             Array of shape (n_max, n_bins) containing probabilities computed for each bin.
         """
 
-        bins_center = self.expec_ns()
+        bins_center = [self.new_expec_ns(n) for n in range(self.__M + 1)]
         half_bin = (bins_center[1] - bins_center[0]) / 2
         left_edge = bins_center[0] - half_bin
         data = [left_edge if left_edge >= 0 else 0]
@@ -138,61 +156,6 @@ class ProteinSystemModel():
         return np.array([self.statistical_func(i, sigma2, expec) for i in data])
 
 
-    def compute_probs(self, n):
-        data, bins_center = self.create_data()
-        sigma2 = self.sigma2_ns()
-        expec = self.expec_ns()
-
-        integral = self.prob_interval(data[0], data[-1], sigma2[n], expec[n])
-        pdf = self.fit(bins_center, sigma2[n], expec[n])
-
-        vec = [integral, pdf]
-        for idx in range(self.__M + 1):
-            a = data[idx]
-            b = data[idx + 1]
-            integ = self.prob_interval(a, b, sigma2[n], expec[n])
-            vec.append(integ)
-
-        return vec
-
-
-    def parallel_get_prob_bins(self):
-
-        n_max = self.__M + 1
-        n_bins = self.__M + 1
-
-        data, bins_center = self.create_data()
-        sigma2 = self.sigma2_ns()
-        expec = self.expec_ns()
-
-        pdfs = np.zeros((n_max, n_bins), dtype=float)
-        truncs = np.zeros(n_max, dtype=float)
-        probs = np.zeros((n_max, n_bins), dtype=float)
-
-        # Using multiprocessing to parallelize the computation
-        with Pool() as pool:
-            args = [(self, n) for n in range(n_max)]
-            results = pool.map(compute_probs_helper, args)
-
-        # Populate the pdfs and probs arrays with results
-        for n, vec in enumerate(results):
-            integral = vec[0]
-            pdf = vec[1]
-            trunc = 1 / integral if integral > 0 else 1
-            truncs[n] = trunc
-            pdfs[n] = pdf
-
-            probs_vec = []
-            for idx in range(n_bins):
-                a = data[idx]
-                b = data[idx + 1]
-                integ = vec[2 + idx]
-                probs_vec.append(integ * trunc)
-            probs[n] = probs_vec
-
-        return pdfs, probs
-
-
     def get_prob_bins(self):
 
         """
@@ -219,8 +182,8 @@ class ProteinSystemModel():
         n_bins = self.__M + 1
 
         data, bins_center = self.create_data()
-        sigma2 = self.sigma2_ns()
-        expec = self.expec_ns()
+        sigma2 = [self.new_sigma2_ns(n) for n in range(n_max)]
+        expec = [self.new_expec_ns(n) for n in range(n_max)]
 
         pdfs = np.zeros((n_max, n_bins), dtype=float)
         truncs = np.zeros(n_max, dtype=float)
