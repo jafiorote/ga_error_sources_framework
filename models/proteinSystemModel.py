@@ -1,10 +1,6 @@
 import numpy as np
-from scipy.integrate import quad
 from scipy.special import binom
-from scipy.stats import poisson, lognorm, norm
-import math
-from decimal import Decimal
-from multiprocessing import Pool
+from scipy.stats import poisson
 
 
 class ProteinSystemModel():
@@ -35,59 +31,46 @@ class ProteinSystemModel():
         self.__i_0 = i_0
         self.__i_nat = i_nat
         self.__sigma2_0 = sigma2_0
-        self.__alpha = self.get_alpha()
-        self.__beta = self.get_beta()
         self.__a = 1.63548
         self.__b = 0.6762
 
+    def get_M(self):
+        return self.__M
 
-    def get_new_alpha(self):
+    def get_i_0(self):
+        return self.__i_0
+
+    def get_i_nat(self):
+        return self.__i_nat
+
+    def get_sigma2_0(self):
+        return self.__sigma2_0
+
+    def get_a(self):
+        return self.__a
+
+    def get_b(self):
+        return self.__b
+
+    def get_alpha(self):
         return self.__i_nat - self.__i_0
 
-    def get_new_beta(self, n):
+    def get_beta(self, n):
         return np.power(n / self.__M, self.__a) * np.power(1 - (n / self.__M), self.__b)
 
     def get_gama(self, n):
         return 1 - (n / self.__M)
 
-    def new_expec_ns(self, n):
-        alpha = self.get_new_alpha()
+    def expec_ns(self, n):
+        alpha = self.get_alpha()
         return self.__i_0 + alpha * np.power(n / self.__M, 2)
 
-    def new_sigma2_ns(self, n):
+    def sigma2_ns(self, n):
         gama = self.get_gama(n)
-        beta = self.get_new_beta(n)
+        beta = self.get_beta(n)
         sigma2 = gama * self.__sigma2_0 + beta
 
-        return sigma2 if sigma2 > 0 else 0.000001
-
-    def get_alpha(self):
-
-        return math.log(self.__i_nat - self.__i_0 + 1) / self.__M
-    
-
-    def get_beta(self):        
-
-        return math.log(self.__sigma2_0 + 1) / self.__M
-
-
-    def expec_ns(self):
-
-        return [self.__i_0 + (math.exp(self.__alpha * n) - 1) for n in range(self.__M + 1)]
-
-
-    def sigma2_ns(self):        
- 
-        sigma2_ns = []
-        for n in range(self.__M + 1):
-            sigma2 = self.__sigma2_0 - (math.exp(self.__beta * n) - 1) 
-            if sigma2 > 0: 
-                sigma2_ns.append(sigma2)
-            else:
-                sigma2_ns.append(sigma2_ns[n - 1]) # get last valid sigma2
-                
-        return sigma2_ns
-
+        return sigma2 if sigma2 > 0 else (self.__sigma2_0 / self.__M)
 
     def create_data(self):
 
@@ -102,7 +85,7 @@ class ProteinSystemModel():
             Array of shape (n_max, n_bins) containing probabilities computed for each bin.
         """
 
-        bins_center = [self.new_expec_ns(n) for n in range(self.__M + 1)]
+        bins_center = [self.expec_ns(n) for n in range(self.__M + 1)]
         half_bin = (bins_center[1] - bins_center[0]) / 2
         left_edge = bins_center[0] - half_bin
         data = [left_edge if left_edge >= 0 else 0]
@@ -110,7 +93,6 @@ class ProteinSystemModel():
             data.append(center + half_bin)
         
         return data, bins_center
-
 
     def __poisson(self, n: int):
 
@@ -126,7 +108,6 @@ class ProteinSystemModel():
         _lambda = 1
         return poisson.pmf(n, _lambda)
 
-
     def get_poisson_weights(self):
 
         """
@@ -141,7 +122,6 @@ class ProteinSystemModel():
         weights = np.vectorize(self.__poisson)
         return weights(np.arange(self.__M + 1)).reshape(-1, 1)
 
-
     def statistical_func(self):
         """To be defined in subclass"""
         pass
@@ -150,11 +130,9 @@ class ProteinSystemModel():
         """To be defined in subclass"""
         pass
 
-
     def fit(self, data: float, sigma2: float, expec: float):
 
         return np.array([self.statistical_func(i, sigma2, expec) for i in data])
-
 
     def get_prob_bins(self):
 
@@ -182,8 +160,8 @@ class ProteinSystemModel():
         n_bins = self.__M + 1
 
         data, bins_center = self.create_data()
-        sigma2 = [self.new_sigma2_ns(n) for n in range(n_max)]
-        expec = [self.new_expec_ns(n) for n in range(n_max)]
+        sigma2 = [self.sigma2_ns(n) for n in range(n_max)]
+        expec = [self.expec_ns(n) for n in range(n_max)]
 
         pdfs = np.zeros((n_max, n_bins), dtype=float)
         truncs = np.zeros(n_max, dtype=float)
@@ -207,14 +185,12 @@ class ProteinSystemModel():
 
         return pdfs, probs
 
-
     def get_probs(self):
 
         """ Return Poisson weighted probabilities."""
 
         return self.get_prob_bins()[1] * self.get_poisson_weights()
     
-
     def reassessment_probs(self, p_array, p=0.25):
 
         """
@@ -236,7 +212,6 @@ class ProteinSystemModel():
         n_bins = self.__M + 1
         reass_probs = np.zeros((self.__M + 1, n_bins), dtype='float')
 
-        # Precompute powers of p and (1 - p)
         p_powers = np.power(p, np.arange(self.__M + 1))
         q_powers = np.power(1 - p, np.arange(self.__M + 1))
 
