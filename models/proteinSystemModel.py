@@ -70,7 +70,7 @@ class ProteinSystemModel():
         beta = self.get_beta(n)
         sigma2 = gama * self.__sigma2_0 + beta
 
-        return sigma2 if sigma2 > 0 else (self.__sigma2_0 / self.__M)
+        return sigma2 if sigma2 > 0 else self.__sigma2_0# (self.__sigma2_0 / self.__M)
 
     def create_data(self):
 
