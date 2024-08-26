@@ -11,7 +11,7 @@ class NormPSM(ProteinSystemModel):
 
     """
         
-    def __init__(self, M:int, i_0:float, i_nat:float, sigma2_0:float):
+    def __init__(self, M:int, i_0:float, i_nat:float, sigma2_0:float, n_bins:int):
 
         """ 
         Parameters
@@ -26,7 +26,7 @@ class NormPSM(ProteinSystemModel):
             Variance of I for systems arrangments with n = 0;
         """
 
-        super().__init__(M, i_0, i_nat, sigma2_0)
+        super().__init__(M, i_0, i_nat, sigma2_0, n_bins)
 
 
     def statistical_func(self, i: float, sigma2: float, expec: float):

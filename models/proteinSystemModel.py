@@ -11,7 +11,7 @@ class ProteinSystemModel():
 
     """
 
-    def __init__(self, M:int, i_0:float, i_nat:float, sigma2_0:float):
+    def __init__(self, M:int, i_0:float, i_nat:float, sigma2_0:float, n_bins:int=11):
 
 
         """ 
@@ -31,6 +31,7 @@ class ProteinSystemModel():
         self.__i_0 = i_0
         self.__i_nat = i_nat
         self.__sigma2_0 = sigma2_0
+        self.__n_bins = n_bins
         self.__a = 1.63548
         self.__b = 0.6762
 
@@ -42,6 +43,9 @@ class ProteinSystemModel():
 
     def get_i_nat(self):
         return self.__i_nat
+
+    def get_n_bins(self):
+        return self.__n_bins
 
     def get_sigma2_0(self):
         return self.__sigma2_0
@@ -70,7 +74,7 @@ class ProteinSystemModel():
         beta = self.get_beta(n)
         sigma2 = gama * self.__sigma2_0 + beta
 
-        return sigma2 if sigma2 > 0 else self.__sigma2_0# (self.__sigma2_0 / self.__M)
+        return sigma2 if sigma2 > 0 else (self.__sigma2_0 / self.__M)
 
     def create_data(self):
 
@@ -82,16 +86,20 @@ class ProteinSystemModel():
         - data (numpy.ndarray): 
             Vector with bins edges.
         - bins_center (numpy.ndarray): 
-            Array of shape (n_max, n_bins) containing probabilities computed for each bin.
+            Vector with bin centers.
         """
 
-        bins_center = [self.expec_ns(n) for n in range(self.__M + 1)]
-        half_bin = (bins_center[1] - bins_center[0]) / 2
-        left_edge = bins_center[0] - half_bin
-        data = [left_edge if left_edge >= 0 else 0]
-        for center in bins_center:
-            data.append(center + half_bin)
+        # bins_center = [self.expec_ns(n) for n in range(self.__n_bins)]
+        # half_bin = (bins_center[1] - bins_center[0]) / 2
+        # left_edge = bins_center[0] - half_bin
+        # data = [left_edge if left_edge >= 0 else 0]
+        # for center in bins_center:
+        #     data.append(center + half_bin)
         
+        data = np.linspace(self.__i_0, self.__i_nat, self.__n_bins + 1)
+        half_bin = (data[1] - data[0]) / 2
+        bins_center = np.array([left_edge + half_bin for left_edge in data[:-1]])
+
         return data, bins_center
 
     def __poisson(self, n: int):
@@ -157,15 +165,14 @@ class ProteinSystemModel():
         """
 
         n_max = self.__M + 1
-        n_bins = self.__M + 1
 
         data, bins_center = self.create_data()
         sigma2 = [self.sigma2_ns(n) for n in range(n_max)]
         expec = [self.expec_ns(n) for n in range(n_max)]
 
-        pdfs = np.zeros((n_max, n_bins), dtype=float)
+        pdfs = np.zeros((n_max, self.__n_bins), dtype=float)
         truncs = np.zeros(n_max, dtype=float)
-        probs = np.zeros((n_max, n_bins), dtype=float)
+        probs = np.zeros((n_max, self.__n_bins), dtype=float)
 
         for n in np.arange(n_max):
 
@@ -176,7 +183,7 @@ class ProteinSystemModel():
             pdfs[n] = self.fit(bins_center, sigma2[n], expec[n])
 
             vec = []
-            for idx in range(n_bins):
+            for idx in range(self.__n_bins):
                 a = data[idx]
                 b = data[idx + 1]
                 integ = self.prob_interval(a, b, sigma2[n], expec[n])
@@ -209,8 +216,7 @@ class ProteinSystemModel():
             A 2D array of containing reassessed bins probabilities.
         """
 
-        n_bins = self.__M + 1
-        reass_probs = np.zeros((self.__M + 1, n_bins), dtype='float')
+        reass_probs = np.zeros((self.__M + 1, self.__n_bins), dtype='float')
 
         p_powers = np.power(p, np.arange(self.__M + 1))
         q_powers = np.power(1 - p, np.arange(self.__M + 1))
