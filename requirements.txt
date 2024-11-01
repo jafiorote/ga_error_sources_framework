@@ -7,3 +7,4 @@ ipython==7.34.0
 pandas==1.5.2
 matplotlib==3.6.2
 jupyter_client==7.4.8
+prettytable-3.11.0
