@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.special import binom
 from scipy.stats import poisson
-from joblib import Parallel, delayed
 
 
 class ProteinSystemModel():
@@ -146,7 +145,7 @@ class ProteinSystemModel():
 
         return np.array([self.statistical_func(i, sigma2, expec) for i in data])
 
-    def get_prob_bins_old(self):
+    def get_prob_bins(self):
 
         """
         Computes probability density functions (PDFs) and bins probabilities for each n of the system.
@@ -193,37 +192,6 @@ class ProteinSystemModel():
                 integ = self.prob_interval(a, b, sigma2[n], expec[n])
                 vec.append(integ * trunc)
             probs[n] = vec
-
-        return pdfs, probs
-
-
-    def get_prob_bins(self):
-
-        n_max = self.__M + 1
-        data, bins_center = self.create_data()
-
-        # Vetorização dos cálculos de sigma2 e expec
-        sigma2 = np.array([self.sigma2_ns(n) for n in range(n_max)])
-        expec = np.array([self.expec_ns(n) for n in range(n_max)])
-        
-        # Função interna para calcular pdfs e probs para um valor de 'n'
-        def calc_for_n(n):
-            integral = self.prob_interval(data[0], data[-1], sigma2[n], expec[n])
-            trunc = 1 / integral if integral > 0 else 1
-            
-            # Cálculo dos PDFs e probabilidades para o valor de 'n'
-            pdf = self.fit(bins_center, sigma2[n], expec[n])
-            prob = np.array([self.prob_interval(data[idx], data[idx + 1], sigma2[n], expec[n]) * trunc 
-                            for idx in range(self.__n_bins)])
-            return pdf, prob
-
-        # Uso de paralelismo para calcular pdfs e probs em cada 'n'
-        results = Parallel(n_jobs=-1)(delayed(calc_for_n)(n) for n in range(n_max))
-
-        # Separar os resultados em pdfs e probs
-        pdfs, probs = zip(*results)
-        pdfs = np.array(pdfs)
-        probs = np.array(probs)
 
         return pdfs, probs
 

@@ -3,7 +3,7 @@ import numpy as np
 
 class GAModel():
 
-    def decap_get_transitions_matrix(self, arr_prob, n_step=1):
+    def get_transitions_matrix(self, arr_prob, n_step=1):
 
         """
         Compute the transitions matrix for a given array of probability states.
@@ -21,43 +21,23 @@ class GAModel():
             A 2D array of shape (n_max * n_bins, n_max * n_bins) representing the transition matrix.
         - idxs (list of lists):
             A list of index pairs, where each pair represents the (n, I) coordinates.
-        
-        Notes
-        -----
-        The function constructs a transition matrix where each state is given by 
-        `I` and `n`. A transition from state (n1, I1) to state (n2, I2) is allowed 
-        if `n2` is within `n_step` units of `n1` and `I2` is exactly `I1 + 1`. The 
-        probabilities are normalized so that the sum of transitions from each state equals 1.
-
-        Examples
-        --------
-        >>> arr_prob = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]])
-        >>> get_transitions_matrix(arr_prob)
-        (array([[0. , 0. , 0. , 0.5, 0. , 0. ],
-                [0. , 0. , 0. , 0. , 0.5, 0. ],
-                [0. , 0. , 0. , 0. , 0. , 0.5],
-                [0. , 0. , 0. , 0. , 0. , 0. ],
-                [0. , 0. , 0. , 0. , 0. , 0. ],
-                [0. , 0. , 0. , 0. , 0. , 0. ]]), 
-        [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1], [0, 2], [1, 2], [2, 2]])
         """
-
+        
         n_max = arr_prob.shape[0]
         n_bins = arr_prob.shape[1]
-        
         transitions = np.zeros((n_max * n_bins, n_max * n_bins), dtype="double")
+        idxs = np.array([[x, y] for y in range(n_bins) for x in range(n_max)])
 
-        idxs = [[x, y] for y in range(n_bins) for x in range(n_max)]
-    
-        for i, idx1 in enumerate(idxs):
-            for j, idx2 in enumerate(idxs):
-                if (idx1[0] - n_step <= idx2[0] <= idx1[0] + n_step) and (idx2[1] == idx1[1] + 1):
-                    transitions[i, j] = arr_prob[idx2[0], idx2[1]]
+        for i, idx in enumerate(idxs):
+            mask = (idxs[:, 1] == (idx[1] + 1)) & (idxs[:, 0] >= (idx[0] - n_step)) & (idxs[:, 0] <= (idx[0] + n_step))
+            potential_steps = np.nonzero(mask)[0]
 
+            transitions[i, potential_steps] = arr_prob[idxs[potential_steps, 0], idxs[potential_steps, 1]]
+                
             if np.sum(transitions[i]) > 0:
                 transitions[i] = transitions[i] / np.sum(transitions[i])
-        
-        return transitions, idxs
+
+        return transitions, idxs.tolist()
     
 
     def get_best_path(self, state_probs, minimize=False, init_state=False):
@@ -128,23 +108,3 @@ class GAModel():
             step = next_step
 
         return [pathway, step_probs]
-    
-
-
-    def get_transitions_matrix(self, arr_prob, n_step=1):
-        
-        n_max = arr_prob.shape[0]
-        n_bins = arr_prob.shape[1]
-        transitions = np.zeros((n_max * n_bins, n_max * n_bins), dtype="double")
-        idxs = np.array([[x, y] for y in range(n_bins) for x in range(n_max)])
-
-        for i, idx in enumerate(idxs):
-            mask = (idxs[:, 1] == (idx[1] + 1)) & (idxs[:, 0] >= (idx[0] - n_step)) & (idxs[:, 0] <= (idx[0] + n_step))
-            potential_steps = np.nonzero(mask)[0]
-
-            transitions[i, potential_steps] = arr_prob[idxs[potential_steps, 0], idxs[potential_steps, 1]]
-                
-            if np.sum(transitions[i]) > 0:
-                transitions[i] = transitions[i] / np.sum(transitions[i])
-
-        return transitions, idxs.tolist()

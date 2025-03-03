@@ -1,13 +1,13 @@
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import lognorm
 from scipy.integrate import quad
 from models.proteinSystemModel import ProteinSystemModel
 
 
-class NormPSM(ProteinSystemModel):
+class LogNormPSM(ProteinSystemModel):
 
     """
-    Implements a normal distribution model of protein system model.
+    Implements a log-normal distribution model of protein system model.
 
     """
         
@@ -32,28 +32,33 @@ class NormPSM(ProteinSystemModel):
     def statistical_func(self, i: float, sigma2: float, expec: float):
 
         """
-        Implements normal pmf for a I distribution in a protein system.
-        
+        Implements log-normal pmf for a I distribution in a protein system.
+
         Parameters
         ----------
-        - i (float): I value to be fitted
-        - sigma2 (float): variance of I
-        - expec (float): expected value of I
+        s (float): exponencial I value to be fitted
+        sigma_2 (float): variance of I
+        expec (float): expected value of I  
         
-        Returns
-        -------
-        float: Probability density function value at i
         """
 
-        return norm.pdf(i, loc=expec, scale=np.sqrt(sigma2))
+
+        sigma = np.sqrt(sigma2)
+        scale = np.exp(expec)
+
+        return lognorm.pdf(np.exp(i), s=sigma, scale=scale)
+
     
 
     def prob_interval(self, i1, i2, sigma2, expec):
         
-        cdf_i2 = norm.cdf(i2, loc=expec, scale=np.sqrt(sigma2))
-        cdf_i1 = norm.cdf(i1, loc=expec, scale=np.sqrt(sigma2))
+        sigma = np.sqrt(sigma2)
+        scale = np.exp(expec)
         
-        prob = cdf_i2 - cdf_i1
+        cdf_x1 = lognorm.cdf(np.exp(i1), s=sigma, scale=scale)
+        cdf_x2 = lognorm.cdf(np.exp(i2), s=sigma, scale=scale)
         
-        return prob
+        return cdf_x2 - cdf_x1
+        
 
+        
